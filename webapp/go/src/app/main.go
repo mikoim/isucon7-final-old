@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"time"
+	"math/rand"
 
 	_ "net/http/pprof"
 	_ "expvar"
@@ -21,6 +22,8 @@ import (
 
 var (
 	db *sqlx.DB
+	hosts []string
+	nyan int64
 )
 
 func initDB() {
@@ -73,12 +76,14 @@ func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 	roomName := vars["room_name"]
 	path := "/ws/" + url.PathEscape(roomName)
 
+	nyan++
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {
 		Host string `json:"host"`
 		Path string `json:"path"`
 	}{
-		Host: "",
+		Host: hosts[nyan % 3],
 		Path: path,
 	})
 }
@@ -99,6 +104,10 @@ func wsGameHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	initDB()
+
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	hosts = []string{"app0191.isu7f.k0y.org", "app0192.isu7f.k0y.org","app0193.isu7f.k0y.org"}
 
 	r := mux.NewRouter()
 
