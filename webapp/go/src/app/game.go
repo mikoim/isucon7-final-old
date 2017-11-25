@@ -392,6 +392,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 
 		itemPower    = map[int]*big.Int{}    // ItemID => Power
 		itemPrice    = map[int]*big.Int{}    // ItemID => Price
+		itemPriceFoo    = map[int]*big.Int{}    // ItemID => Price
 		itemOnSale   = map[int]int64{}       // ItemID => OnSale
 		itemBuilt    = map[int]int{}         // ItemID => BuiltCount
 		itemBought   = map[int]int{}         // ItemID => CountBought
@@ -439,7 +440,9 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 		itemBuilt0[m.ItemID] = itemBuilt[m.ItemID]
 		price := m.GetPrice(itemBought[m.ItemID] + 1)
 		itemPrice[m.ItemID] = price
-		if 0 <= totalMilliIsu.Cmp(new(big.Int).Mul(price, big.NewInt(1000))) {
+		foo := new(big.Int).Mul(price, big.NewInt(1000))
+		itemPriceFoo[m.ItemID] = foo
+		if 0 <= totalMilliIsu.Cmp(foo) {
 			itemOnSale[m.ItemID] = 0 // 0 は 時刻 currentTime で購入可能であることを表す
 		}
 	}
@@ -497,7 +500,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 			if _, ok := itemOnSale[itemID]; ok {
 				continue
 			}
-			if 0 <= totalMilliIsu.Cmp(new(big.Int).Mul(itemPrice[itemID], big.NewInt(1000))) {
+			if 0 <= totalMilliIsu.Cmp(itemPriceFoo[itemID]) {
 				itemOnSale[itemID] = t
 			}
 		}
