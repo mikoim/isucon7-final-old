@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"math/big"
+	"math"
 	"strconv"
 	"time"
 
@@ -101,6 +103,7 @@ type mItem struct {
 	Price4 int64 `db:"price4"`
 }
 
+
 func (item *mItem) GetPower(count int) *big.Int {
 	// power(x):=(cx+1)*d^(ax+b)
 	a := item.Power1
@@ -145,6 +148,45 @@ func big2exp(n *big.Int) Exponential {
 		log.Panic(err)
 	}
 	return Exponential{t, int64(len(s) - 15)}
+}
+
+func betterBig2exp(n *big.Int) Exponential {
+	bytes := n.Bytes()
+	bytesLen := len(bytes)
+	var binaryExponent int
+	var binaryBase uint64
+	var last7Bytes []byte
+	var baseStr string
+	var base uint64
+	var additionalExp uint64
+	var exponent uint64
+	if bytesLen > 7 {
+		binaryExponent = bytesLen - 7
+		last7Bytes = bytes[:binaryExponent]
+		binaryBase = binary.BigEndian.Uint64(last7Bytes)
+		if binaryBase > 10^15 {
+			baseStr = fmt.Sprint(binaryBase)
+			additionalExp = uint64(len(baseStr) - 15)
+			baseInt, _ := strconv.Atoi(baseStr[:15])
+			base = uint64(baseInt)
+			exponent = additionalExp + uint64( (float64(binaryBase)) * math.Log10(2) )
+		} else {
+			base = binaryBase
+			exponent = uint64((float64(binaryBase) * math.Log10(2)))
+		}
+	} else {
+		binaryExponent = 0
+		for i := 0; i < 57;  i++ {
+		last7Bytes = append(last7Bytes, 0)
+}
+		binaryBase = binary.LittleEndian.Uint64(last7Bytes)
+		additionalExp = 0
+		exponent = 0
+	}
+	return Exponential {
+		Mantissa: int64(base),
+		Exponent: int64(exponent),
+	}
 }
 
 func getCurrentTime() (int64, error) {
@@ -392,7 +434,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 
 		itemPower    = map[int]*big.Int{}    // ItemID => Power
 		itemPrice    = map[int]*big.Int{}    // ItemID => Price
-		itemPriceFoo    = map[int]*big.Int{}    // ItemID => Price
+		itemPriceFoo = map[int]*big.Int{}    // ItemID => Price
 		itemOnSale   = map[int]int64{}       // ItemID => OnSale
 		itemBuilt    = map[int]int{}         // ItemID => BuiltCount
 		itemBought   = map[int]int{}         // ItemID => CountBought
@@ -517,7 +559,7 @@ func calcStatus(currentTime int64, mItems map[int]mItem, addings []Adding, buyin
 			ItemID:      itemID,
 			CountBought: itemBought[itemID],
 			CountBuilt:  itemBuilt0[itemID],
-			NextPrice:   big2exp(itemPrice[itemID]),
+			NextPrice:   betterBig2exp(itemPrice[itemID]),
 			Power:       itemPower0[itemID],
 			Building:    itemBuilding[itemID],
 		})
